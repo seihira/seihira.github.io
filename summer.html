@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <title>私の夏休み</title>
+</head>
+<style>#main{max-width: 1000px;max-height: 800px;font-family: "ＭＳ Ｐゴシック","ＭＳ ゴシック",sans-serif;margin:3px;padding: 3px; background: #87cefa;}p{margin:5px;padding: 5px; background: #f0ffff;}</style>
+<body>
+<!--  <h2><font color="#6495ed">私の夏休み</font></h2>-->
+    <!-- 現在の要素 -->
+    <div id="main">
+      <!-- 子要素 -->
+       <p><button id="summer_btn">click!</button></p> 
+       <p id="view" title="kekka">[写真が2枚出てきます]</p>
+    </div>
+    
+    
+<script>
+const summer_btn = document.querySelector("#summer_btn");
+summer_btn.onclick = function(){
+    const value = ["","犬","温泉"];
+    const num = Math.ceil(Math.random()*2);
+
+    if(num == 1){
+        const h = document.querySelector("#view");
+        h.innerHTML = '<img src ="1.jpg"><br>インターンシップで実家に帰りました。ポメラニアンを飼っています🐕';
+        h.style.color="red";
+    }
+    if(num == 2){
+        const h = document.querySelector("#view");
+        h.innerHTML = '<img src ="2.jpg" width=95% ><br>銀山温泉に行きました！建物が綺麗';
+        h.style.color="blue";
+    }
+}
+    </script>
+</body>
+</html>
