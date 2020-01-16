@@ -1,0 +1,448 @@
+<html>
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" type="text/css" href="country.css">
+<script src="https://code.jquery.com/jquery-3.3.1.min.js"></script>
+<script src="googleSheets.js"></script>
+  <title>🏳‍🌈Capital city🏳‍🌈</title>
+</head>
+<body>
+<style>
+.links line {
+    stroke: #999;
+    stroke-opacity: 5;
+}
+.nodes circle {
+  stroke: #fff;
+    stroke-width: 2.5px;
+}
+.center-box {
+    text-align:center;
+}
+.large-text {
+    font-size: 4.0rem;
+}
+
+text {
+  font-family: sans-serif;
+  font-size: 12px;
+}
+</style>
+<svg width="1000" height="600"></svg>
+
+<script src="https://d3js.org/d3.v4.min.js"></script>
+
+      <p id="view" title="name">＊🏳‍🌈上図の首都の名前を喋ってください＊</p>
+<script>
+
+let svg = d3.select("svg"),
+    width = +svg.attr("width"),
+    height = +svg.attr("height");
+
+let color = d3.scaleOrdinal(d3.schemeCategory20);
+
+let simulation = d3.forceSimulation()
+  .force("link", d3.forceLink().id(function(d) { return d.id; }))
+  // .force("collide",d3.forceCollide().radius(20).iterations(16))
+  .force("charge", d3.forceManyBody().strength(-100))  //反発力の設定
+  .force("center", d3.forceCenter(width / 2, height / 2))
+  .force("x", d3.forceX().x(width / 2).strength(0.1))  //x方向に戻る力
+  .force("y", d3.forceY().y(height / 2).strength(0.1)) //y方向に戻る力
+  ;
+
+d3.json("country.json", function(error, graph) {
+  if (error) throw error;
+  let link = svg.append("g")
+    .attr("class", "links")
+    .selectAll("line")
+    .data(graph.links)
+    .enter().append("line")
+    .attr("stroke-width", function(d) { return Math.sqrt(d.value); });
+
+  let node = svg.append("g")
+    .attr("class", "nodes")
+    .selectAll("g")
+    .data(graph.nodes)
+    .enter().append("g")
+    
+  let circles = node.append("circle")
+    .attr("r", 5)
+    .attr("fill", function(d) { return color(d.group); })
+    .call(d3.drag()
+      .on("start", dragstarted)
+      .on("drag", dragged)
+      .on("end", dragended));
+
+  let lables = node.append("text")
+    .text(function(d) {
+      return d.id;
+    })
+    .attr('x', 6)
+    .attr('y', 3);
+
+  node.append("title")
+    .text(function(d) { return d.id; });
+
+  simulation
+    .nodes(graph.nodes)
+    .on("tick", ticked);
+
+  simulation.force("link")
+    .links(graph.links);
+
+  function ticked() {
+    link
+    .attr("x1", function(d) { return d.source.x; })
+    .attr("y1", function(d) { return d.source.y; })
+    .attr("x2", function(d) { return d.target.x; })
+    .attr("y2", function(d) { return d.target.y; });
+
+    node
+    .attr("transform", function(d) {
+      return "translate(" + d.x + "," + d.y + ")";
+    })
+  }
+});
+
+function dragstarted(d) {
+  if (!d3.event.active) simulation.alphaTarget(0.3).restart();
+  d.fx = d.x;
+  d.fy = d.y;
+}
+
+function dragged(d) {
+  d.fx = d3.event.x;
+  d.fy = d3.event.y;
+}
+
+function dragended(d) {
+  if (!d3.event.active) simulation.alphaTarget(0).force("collide",d3.forceCollide().radius(10).iterations(16));
+  d.fx = null;
+  d.fy = null;
+}
+
+// マウスドラッグをする際に、スクロールを禁止するためのコード
+function handleTouchMove(event) {
+  event.preventDefault();
+}
+document.addEventListener('touchmove', handleTouchMove, { passive: false });
+document.removeEventListener('touchmove', handleTouchMove, { passive: false });
+
+</script>
+
+<p class="center-box"><img id="mic" src="micoff.svg" width=20%></p>
+<div id="result-div" class="large-text"></div>
+
+<script>
+  const resultDiv = document.querySelector('#result-div');
+  const micDiv = document.querySelector('#mic');
+  let speakingtime = 0;
+  
+  // 音声認識機能(Chrome)
+  let rec = new webkitSpeechRecognition();
+  let stopped = true;
+  rec.continuous = true;
+  rec.interimResults = false;
+  rec.lang = 'ja-JP';
+
+  micDiv.onclick = function () {
+    if (stopped == true) {
+      stopped = false;
+      resultDiv.innerHTML = "";
+      rec.start();
+    } else {
+      stopped = true;
+      rec.stop();
+    }
+  }
+
+  rec.onstart = function () { 
+    console.log('on start');
+    micDiv.setAttribute("src","micon.svg");
+    speakingtime = 0;
+  };
+
+  rec.onend = function () { 
+    console.log('on end');
+    micDiv.setAttribute("src","micoff.svg");
+    if (stopped == false) {
+      setTimeout(function () {
+        rec.start();
+      },speakingtime);
+    }
+  };
+
+  rec.onresult = function (e) {
+    rec.stop();
+    for (let i = e.resultIndex; i < e.results.length; i++) {
+      if (e.results[i].isFinal) {
+        console.log(e);
+        let text = e.results[i][0].transcript;
+        console.log(text);
+        speakingtime = text.length * 200;
+        console.log("estimate:", speakingtime, "ms");
+        speak(reply(text));
+        resultDiv.innerHTML = text;
+      }
+    }
+  }
+  
+  function reply (text){
+      if (text == "東京"){
+          return "東京は日本の首都です";
+      } else if (text == "北京"){
+          return "北京は中国の首都です";
+      } else if (text == "ソウル"){
+          return "ソウルは韓国の首都です";
+      } else if (text == "ジャカルタ"){
+          return "ジャカルタはインドネシアの首都です";
+      } else if (text == "ニューデリー"){
+          return "ニューデリーはインドの首都です";
+      } else if (text == "シンガポール"){
+          return "シンガポールはシンガポールの首都です";
+      } else if (text == "バンコク"){
+          return "バンコクはタイの首都です";
+      } else if (text == "台北"){
+          return "台北は台湾の首都です";
+      } else if (text == "ロンドン"){
+          return "ロンドンはイギリスの首都です";
+      } else if (text == "ローマ"){
+          return "ローマはイタリアの首都です";
+      } else if (text == "キエフ"){
+          return "キエフはウクライナの首都です";
+      } else if (text == "ウィーン"){
+          return "ウィーンはオーストラリアの首都です";
+      } else if (text == "アムステルダム"){
+          return "アムステルダムはオランダの首都です";
+      } else if (text == "アテネ"){
+          return "アテネはギリシャの首都です";
+      } else if (text == "ベルン"){
+          return "ベルンはスイスの首都です";
+      } else if (text == "ストックホルム"){
+          return "ストックホルムはスウェーデンの首都です";
+      } else if (text == "マドリード"){
+          return "マドリードはスペインの首都です";
+      } else if (text == "ベルリン"){
+          return "ベルリンはドイツの首都です";
+      } else if (text == "ブリュッセル"){
+          return "ブリュッセルはベルギーの首都です";
+      } else if (text == "ブカレスト"){
+          return "ブカレストはルーマニアの首都です";
+      } else if (text == "モスクワ"){
+          return "モスクワはロシアの首都です";
+      } else if (text == "カイロ"){
+          return "カイロはエジプトの首都です";
+      } else if (text == "ナイロビ"){
+          return "ナイロビはケニアの首都です";
+      } else if (text == "ワシントンＤＣ"){
+          return "ワシントンＤＣはアメリカの首都です";
+      } else if (text == "オタワ"){
+          return "オタワはカナダの首都です";
+      } else if (text == "ハバナ"){
+          return "ハバナはキューバの首都です";
+      } else if (text == "キングストン"){
+          return "キングストンはジャマイカの首都です";
+      } else if (text == "メキシコシティ"){
+          return "メキシコシティはメキシコの首都です";
+      } else if (text == "ブエノスアイレス"){
+          return "ブエノスアイレスはアルゼンチンの首都です";
+      } else if (text == "ブラジリア"){
+          return "ブラジリアはブラジルの首都です";
+      } else if (text == "リマ"){
+          return "リマはペルーの首都です";
+      } else if (text == "モンテビデオ"){
+          return "モンテビデオはウルグアイの首都です";
+      } else if (text == "カラカス"){
+          return "カラカスはベネズエラの首都です";
+      } else if (text == "キャンベラ"){
+          return "キャンベラはオーストラリアの首都です";
+      } else if (text == "ウェリントン"){
+          return "ウェリントンはニューデリーの首都です";
+      } else if (text == "ホニアラ"){
+          return "ホニアラはソロモン諸島の首都です";
+      } else if (text == "スバ"){
+          return "スバはフィジーの首都です";
+      } else {
+          return "よくわかりません";
+      }
+  }
+    
+//    const quiz_btn = document.querySelector("#quiz_btn");
+//    quiz_btn.onclick = function(){
+//        const value = ["","１問","２問"];
+//        const num = Math.ceil(Math.random()*2);
+//        
+//        if(num == 1){
+//            const h = document.querySelector("#view");
+//            h.innerHTML = '兵庫、奈良、大阪の中で、いつも眠そうにしているのはどこの人？<br>≪分からなかったら、ヒント１と言ってね！≫';
+//            h.style.color="red";
+//        }
+//        if(num == 2){
+//            const h = document.querySelector("#view");
+//            h.innerHTML = '雨がふってくると、たくさんあらわれる鳥ってなに？<br>≪分からなかったら、ヒント２と言ってね！≫';
+//            h.style.color="blue";
+//        }
+//    }
+
+  // 発話機能をインスタンス化
+  let msg = new SpeechSynthesisUtterance();
+  let voices = window.speechSynthesis.getVoices();
+
+  function speak(text) {
+    // 以下オプション設定（日本語は効かないもよう。。）
+    msg.voice = voices[7]; // 7:Google 日本人 ja-JP ※他は英語のみ
+    msg.volume = 1.0; // 音量 min 0 ~ max 1
+    msg.rate = 1.0; // 速度 min 0 ~ max 10
+    msg.pitch = 1.0; // 音程 min 0 ~ max 2
+
+    msg.text = text;// 喋る内容
+    msg.lang = 'ja-JP'; // en-US or ja-JP
+    // msg.lang = 'en-US'; // en-US or ja-JP
+
+    // 発話実行
+    speechSynthesis.speak(msg);
+  }
+  
+  // 終了時の処理
+  msg.onend = function (event) {
+    console.log('喋った時間：' + event.elapsedTime + 'ms');
+  }
+
+
+</script>
+
+
+     <button id="mybtn">＊map＊</button>
+      <br>
+      <table>
+      <tr>
+          <th>Erea</th>
+          <th>Capital city</th>
+          <th>Map</th>
+    </tr>
+      </table>
+       <div id="contents">
+       </div>
+<script>
+    /* global $ loadSheets */
+    $(function(){
+      $("#mybtn").on("click",showdata);
+
+        
+      async function showdata () {
+          let data = await loadSheets('s1314149_2!A1:D100');
+          console.log(data.values[0][0]);
+          $("#contents").append(data.values[1][1]);
+          $("#contents").append(data.values[1][2]);
+          $("#contents").append(data.values[1][3]);
+          $("#contents").append("<br>");
+          
+          $("#contents").append(data.values[2][1]);
+          $("#contents").append(data.values[2][2]);
+          $("#contents").append(data.values[2][3]);
+          $("#contents").append("<br>");
+        
+          $("#contents").append(data.values[3][1]);
+          $("#contents").append(data.values[3][2]);
+          $("#contents").append(data.values[3][3]);
+          $("#contents").append("<br>");
+          
+          $("#contents").append(data.values[4][1]);
+          $("#contents").append(data.values[4][2]);
+          $("#contents").append(data.values[4][3]);
+          $("#contents").append("<br>");
+          
+          $("#contents").append(data.values[5][1]);
+          $("#contents").append(data.values[5][2]);
+          $("#contents").append(data.values[5][3]);
+          $("#contents").append("<br>");
+          
+          $("#contents").append(data.values[6][1]);
+          $("#contents").append(data.values[6][2]);
+          $("#contents").append(data.values[6][3]);
+          $("#contents").append("<br>");
+          
+          $("#contents").append(data.values[7][1]);
+          $("#contents").append(data.values[7][2]);
+          $("#contents").append(data.values[7][3]);
+          $("#contents").append("<br>");
+          
+          $("#contents").append(data.values[8][1]);
+          $("#contents").append(data.values[8][2]);
+          $("#contents").append(data.values[8][3]);
+          $("#contents").append("<br>");
+          
+          $("#contents").append(data.values[9][1]);
+          $("#contents").append(data.values[9][2]);
+          $("#contents").append(data.values[9][3]);
+          $("#contents").append("<br>");
+          
+          $("#contents").append(data.values[10][1]);
+          $("#contents").append(data.values[10][2]);
+          $("#contents").append(data.values[10][3]);
+          $("#contents").append("<br>");
+          
+          $("#contents").append(data.values[11][1]);
+          $("#contents").append(data.values[11][2]);
+          $("#contents").append(data.values[11][3]);
+          $("#contents").append("<br>");
+          
+          $("#contents").append(data.values[12][1]);
+          $("#contents").append(data.values[12][2]);
+          $("#contents").append(data.values[12][3]);
+          $("#contents").append("<br>");
+          
+          $("#contents").append(data.values[13][1]);
+          $("#contents").append(data.values[13][2]);
+          $("#contents").append(data.values[13][3]);
+          $("#contents").append("<br>");
+          
+          $("#contents").append(data.values[14][1]);
+          $("#contents").append(data.values[14][2]);
+          $("#contents").append(data.values[14][3]);
+          $("#contents").append("<br>");
+          
+          $("#contents").append(data.values[15][1]);
+          $("#contents").append(data.values[15][2]);
+          $("#contents").append(data.values[15][3]);
+          $("#contents").append("<br>");
+          
+          $("#contents").append(data.values[16][1]);
+          $("#contents").append(data.values[16][2]);
+          $("#contents").append(data.values[16][3]);
+          $("#contents").append("<br>");
+          
+          $("#contents").append(data.values[17][1]);
+          $("#contents").append(data.values[17][2]);
+          $("#contents").append(data.values[17][3]);
+          $("#contents").append("<br>");
+          
+          $("#contents").append(data.values[18][1]);
+          $("#contents").append(data.values[18][2]);
+          $("#contents").append(data.values[18][3]);
+          $("#contents").append("<br>");
+          
+          $("#contents").append(data.values[19][1]);
+          $("#contents").append(data.values[19][2]);
+          $("#contents").append(data.values[19][3]);
+          $("#contents").append("<br>");
+          
+          $("#contents").append(data.values[20][1]);
+          $("#contents").append(data.values[20][2]);
+          $("#contents").append(data.values[20][3]);
+          $("#contents").append("<br>");
+          
+          $("#contents").append(data.values[21][1]);
+          $("#contents").append(data.values[21][2]);
+          $("#contents").append(data.values[21][3]);
+          $("#contents").append("<br>");
+      }
+    });
+
+    </script>
+    <script async defer src="https://apis.google.com/js/api.js"
+      onload="this.onload=function(){};handleClientLoad()"
+      onreadystatechange="if (this.readyState === 'complete') this.onload()">
+    </script>
+</body>
+</html>
